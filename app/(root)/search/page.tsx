@@ -1,57 +1,62 @@
-import React from 'react';
-import { currentUser } from '@clerk/nextjs/server';
-import { redirect } from 'next/navigation';
-import { fetchUser, fetchUsers } from '@/lib/actions/user.actions';
-import PostThread from '@/components/forms/PostThread';
-import ProfileHeader from '@/components/shared/ProfileHeader';
-import { profileTabs } from '@/constants';
-import Image from 'next/image';
-import ThreadsTab from '@/components/shared/ThreadsTab';
-import UserCard from '@/components/cards/UserCard';
+import { redirect } from "next/navigation";
+import { currentUser } from "@clerk/nextjs/server";
 
-const Page = async () => {
+import UserCard from "@/components/cards/UserCard";
+import Searchbar from "@/components/shared/Searchbar";
+import Pagination from "@/components/shared/Pagination";
+
+import { fetchUser, fetchUsers } from "@/lib/actions/user.actions";
+
+async function Page({
+  searchParams,
+}: {
+  searchParams: { [key: string]: string | undefined };
+}) {
   const user = await currentUser();
-
-  if (!user) {
-    redirect('/sign-in');
-    return null;
-  }
+  if (!user) return null;
 
   const userInfo = await fetchUser(user.id);
+  if (!userInfo?.onboarded) redirect("/onboarding");
 
-  if (!userInfo?.onboarded) redirect('/onboarding');
-
-  //fetch all users
   const result = await fetchUsers({
     userId: user.id,
-    searchString: '',
-    pageNumber: 1,
-    pageSize: 25
-  })
-  
+    searchString: searchParams.q,
+    pageNumber: searchParams?.page ? +searchParams.page : 1,
+    pageSize: 25,
+  });
+
   return (
     <section>
-        <h1 className="head-text mb-10">Search</h1>
+      <h1 className='head-text mb-10'>Search</h1>
 
-        <div className="mt-14 flex flex-col gap-9">
-            {result.users.length === 0 ? (
-                <p className="no-result">No users</p>
-            ) : (
-                <>
-                {result.users.map((person: any) => (
-                    <UserCard 
-                    key={person.id}
-                    id={person.id}
-                    name={person.name}
-                    username={person.username}
-                    imgUrl={person.image}
-                    personType='User'/>
-                ))}
-                </>
-            )}
-        </div>
+      <Searchbar routeType='search' />
+
+      <div className='mt-14 flex flex-col gap-9'>
+        {result.users.length === 0 ? (
+          <p className='no-result'>No Result</p>
+        ) : (
+          <>
+            {result.users.map((person) => (
+              <UserCard
+                key={person.id}
+                id={person.id}
+                name={person.name}
+                username={person.username}
+                imgUrl={person.image}
+                personType='User'
+              />
+            ))}
+          </>
+        )}
+      </div>
+
+      <Pagination
+        path='search'
+        pageNumber={searchParams?.page ? +searchParams.page : 1}
+        isNext={result.isNext}
+      />
     </section>
-  )
+  );
 }
 
-export default Page
+export default Page;
